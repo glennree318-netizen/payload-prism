@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payload Prism — Local JSON Fuzzer & Edge-Case Generator</title>
+<meta name="description" content="Payload Prism is a 100% local, offline JSON fuzzer. Mutate API payloads with nulls, type chaos, and injection tests without sending sensitive data to any server.">
+<meta name="keywords" content="json fuzzer, offline json tester, api edge case generator, local json mutation, privacy first developer tool, postman exporter">
+<meta name="author" content="Payload Prism">
+<meta property="og:title" content="Payload Prism — Local JSON Fuzzer">
+<meta property="og:description" content="Split one JSON payload into a spectrum of edge cases. 100% local, zero data leaves your browser.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>◆</text></svg>">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0f; --panel: #12121a; --panel-2: #1a1a25; --border: #2a2a3a;
+    --text: #e4e4ef; --text-dim: #8888a0; --accent-1: #a855f7; --accent-2: #3b82f6;
+    --accent-3: #ec4899; --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+    --mono: 'SF Mono', Monaco, Consolas, monospace;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+    padding: 2rem 1rem; line-height: 1.5;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 2.5rem; }
+  .logo {
+    font-size: 2.5rem; font-weight: 800;
+    background: linear-gradient(90deg, var(--accent-1), var(--accent-2), var(--accent-3));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .tagline { color: var(--text-dim); margin-top: 0.5rem; font-size: 0.95rem; }
+  .privacy-badge {
+    display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 1rem;
+    padding: 0.4rem 0.9rem; background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 999px;
+    font-size: 0.8rem; color: var(--success);
+  }
+  .workspace { display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem; }
+  @media (max-width: 900px) { .workspace { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.25rem; min-width: 0;
+  }
+  .panel-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;
+  }
+  .panel-title {
+    font-size: 0.85rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--text-dim);
+  }
+  textarea {
+    width: 100%; min-height: 400px; background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 8px; padding: 1rem;
+    color: var(--text); font-family: var(--mono); font-size: 0.85rem;
+    resize: vertical; line-height: 1.6;
+  }
+  textarea:focus { outline: none; border-color: var(--accent-2); }
+  .btn {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem;
+    cursor: pointer; transition: all 0.15s; font-family: inherit;
+  }
+  .btn:hover { border-color: var(--accent-2); background: #222230; }
+  .btn-primary {
+    background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+    border: none; color: white; font-weight: 600; padding: 0.75rem 1.5rem;
+    width: 100%; margin-top: 1rem; font-size: 0.95rem;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-small { padding: 0.4rem 0.9rem; font-size: 0.75rem; font-weight: 600; }
+  .btn-success { background: var(--success); border: none; color: white; }
+  .btn-success:hover { opacity: 0.9; }
+  .btn-warning { background: var(--warning); border: none; color: #000; }
+  .btn-warning:hover { opacity: 0.9; }
+  .btn-danger { background: transparent; border: 1px solid rgba(239, 68, 68, 0.4); color: var(--danger); }
+  .btn-danger:hover { background: rgba(239, 68, 68, 0.1); }
+  .error {
+    background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--danger); padding: 0.75rem 1rem; border-radius: 8px;
+    margin-top: 1rem; font-size: 0.85rem; display: none;
+  }
+  .error.show { display: block; }
+  .input-actions {
+    display: flex; gap: 0.5rem; margin-bottom: 0.75rem; flex-wrap: wrap;
+  }
+  .file-upload-label {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.4rem 0.9rem; background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 6px;
+    font-size: 0.75rem; font-weight: 600; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .file-upload-label:hover { border-color: var(--accent-2); background: #222230; }
+  .file-upload-label input { display: none; }
+  .custom-rules-section {
+    background: rgba(168, 85, 247, 0.05); border: 1px solid rgba(168, 85, 247, 0.2);
+    border-radius: 8px; padding: 1rem; margin-top: 1rem;
+  }
+  .custom-rules-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 0.75rem; cursor: pointer; user-select: none;
+  }
+  .custom-rules-title {
+    font-size: 0.85rem; font-weight: 600; color: var(--accent-1);
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .custom-rules-toggle {
+    font-size: 0.75rem; color: var(--text-dim); transition: transform 0.2s;
+  }
+  .custom-rules-toggle.collapsed { transform: rotate(-90deg); }
+  .custom-rules-content { display: none; }
+  .custom-rules-content.show { display: block; }
+  .rule-inputs {
+    display: flex; gap: 0.5rem; margin-bottom: 0.75rem; align-items: stretch;
+  }
+  .rule-inputs input {
+    flex: 1; min-width: 0; background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 0.5rem 0.75rem; color: var(--text);
+    font-family: var(--mono); font-size: 0.8rem; height: 36px;
+  }
+  .rule-inputs input:focus { outline: none; border-color: var(--accent-1); }
+  .rule-inputs .btn {
+    flex-shrink: 0; height: 36px; white-space: nowrap;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 0.9rem;
+  }
+  .rules-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .rule-chip {
+    background: rgba(168, 85, 247, 0.15); border: 1px solid rgba(168, 85, 247, 0.3);
+    border-radius: 999px; padding: 0.3rem 0.7rem; font-size: 0.75rem;
+    display: flex; align-items: center; gap: 0.5rem; color: var(--accent-1);
+  }
+  .rule-chip-remove { cursor: pointer; opacity: 0.6; transition: opacity 0.15s; }
+  .rule-chip-remove:hover { opacity: 1; }
+  .history-section {
+    background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 8px; padding: 1rem; margin-top: 1rem;
+  }
+  .history-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 0.75rem; cursor: pointer; user-select: none;
+  }
+  .history-title {
+    font-size: 0.85rem; font-weight: 600; color: var(--accent-2);
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .history-content { display: none; }
+  .history-content.show { display: block; }
+  .history-list { display: flex; flex-direction: column; gap: 0.4rem; max-height: 200px; overflow-y: auto; }
+  .history-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.5rem 0.75rem; background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 6px;
+    font-size: 0.75rem; gap: 0.5rem;
+  }
+  .history-item-info { flex: 1; min-width: 0; }
+  .history-item-time { color: var(--text-dim); font-size: 0.7rem; }
+  .history-item-preview {
+    color: var(--text); font-family: var(--mono);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .history-item-actions { display: flex; gap: 0.3rem; flex-shrink: 0; }
+  .history-empty {
+    text-align: center; padding: 1rem; color: var(--text-dim);
+    font-size: 0.8rem; font-style: italic;
+  }
+  .results-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;
+  }
+  .batch-indicator {
+    background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3);
+    color: var(--accent-2); padding: 0.3rem 0.7rem; border-radius: 999px;
+    font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem;
+  }
+  .payload-group {
+    margin-bottom: 2rem; border-left: 3px solid var(--accent-2);
+    padding-left: 1rem;
+  }
+  .payload-group-header {
+    font-size: 0.9rem; font-weight: 600; color: var(--accent-2);
+    margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;
+  }
+  .mutation {
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 8px; margin-bottom: 0.75rem; overflow: hidden;
+    max-width: 100%;
+  }
+  .mutation-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.75rem 1rem; background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid var(--border); gap: 0.75rem;
+    flex-wrap: wrap; position: sticky; top: 0; z-index: 2;
+  }
+  .mutation-info { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; flex: 1; }
+  .mutation-name {
+    font-weight: 600; font-size: 0.9rem;
+    display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  }
+  .mutation-tag {
+    font-size: 0.65rem; padding: 0.15rem 0.5rem; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;
+    background: rgba(59, 130, 246, 0.2); color: var(--accent-2);
+  }
+  .mutation-tag-custom { background: rgba(168, 85, 247, 0.2); color: var(--accent-1); }
+  .mutation-desc { font-size: 0.75rem; color: var(--text-dim); }
+  .mutation-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+  .code-wrapper { position: relative; max-height: 280px; overflow: auto; }
+  pre {
+    padding: 1rem; font-family: var(--mono); font-size: 0.8rem;
+    line-height: 1.5; color: #c4c4d4; margin: 0;
+    white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;
+  }
+  .truncated-notice {
+    background: rgba(245, 158, 11, 0.15); border-top: 1px solid rgba(245, 158, 11, 0.3);
+    color: #fbbf24; padding: 0.5rem 1rem; font-size: 0.75rem;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .truncated-notice button {
+    background: transparent; border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fbbf24; padding: 0.2rem 0.6rem; border-radius: 4px;
+    font-size: 0.7rem; cursor: pointer; font-family: inherit;
+  }
+  .truncated-notice button:hover { background: rgba(245, 158, 11, 0.2); }
+  .empty-state { text-align: center; padding: 4rem 1rem; color: var(--text-dim); }
+  .empty-state-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.3; }
+  .copied {
+    position: fixed; bottom: 2rem; right: 2rem; background: var(--success);
+    color: white; padding: 0.75rem 1.25rem; border-radius: 8px;
+    font-size: 0.85rem; font-weight: 600; opacity: 0;
+    transform: translateY(10px); transition: all 0.2s;
+    pointer-events: none; z-index: 9999;
+  }
+  .copied.show { opacity: 1; transform: translateY(0); }
+  
+  /* Footer Styles */
+  footer {
+    margin-top: 4rem; padding: 2.5rem 0 1.5rem;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+  .footer-content {
+    max-width: 600px; margin: 0 auto;
+  }
+  .footer-message {
+    font-size: 0.95rem; color: var(--text); margin-bottom: 1.5rem;
+    line-height: 1.6;
+  }
+  .footer-message strong {
+    color: var(--accent-2);
+  }
+  .footer-links {
+    display: flex; justify-content: center; gap: 1.5rem;
+    flex-wrap: wrap; margin-bottom: 1.5rem;
+  }
+  .footer-link {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.6rem 1.2rem; background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); text-decoration: none;
+    font-size: 0.85rem; font-weight: 500;
+    transition: all 0.2s;
+  }
+  .footer-link:hover {
+    border-color: var(--accent-2); background: #222230;
+    transform: translateY(-2px);
+  }
+  .footer-link svg {
+    width: 18px; height: 18px; fill: currentColor;
+  }
+  .footer-divider {
+    width: 60px; height: 2px; background: var(--border);
+    margin: 1.5rem auto;
+  }
+  .footer-bottom {
+    font-size: 0.8rem; color: var(--text-dim);
+  }
+  .footer-bottom a {
+    color: var(--accent-2); text-decoration: none;
+  }
+  .footer-bottom a:hover {
+    text-decoration: underline;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">◆ Payload Prism</div>
+    <div class="tagline">Split one JSON payload into a spectrum of edge cases.</div>
+    <div class="privacy-badge">
+      <span>🔒</span>
+      <span>100% local · No data leaves your browser · Works offline</span>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Input JSON</div>
+      </div>
+      <div class="input-actions">
+        <button class="btn btn-small" id="loadSample">Load Sample</button>
+        <label class="file-upload-label">
+          <span>📁 Upload .json</span>
+          <input type="file" id="fileInput" accept=".json,application/json">
+        </label>
+        <button class="btn btn-small btn-danger" id="clearInput" style="display:none;">Clear</button>
+      </div>
+      <textarea id="input" placeholder='Paste your API payload here...
+{
+  "username": "johndoe",
+  "email": "john@example.com",
+  "age": 25,
+  "roles": ["user"]
+}
+
+Or upload a .json file containing an array of payloads for batch processing.'></textarea>
+      
+      <div class="custom-rules-section">
+        <div class="custom-rules-header" id="customRulesToggle">
+          <div class="custom-rules-title">
+            <span>⚙️</span>
+            <span>Custom Mutation Rules</span>
+          </div>
+          <span class="custom-rules-toggle collapsed" id="toggleIcon">▼</span>
+        </div>
+        <div class="custom-rules-content" id="customRulesContent">
+          <div class="rule-inputs">
+            <input type="text" id="ruleKey" placeholder="Target key (e.g., role)">
+            <input type="text" id="ruleValue" placeholder="Force value (e.g., admin)">
+            <button class="btn btn-small" id="addRule">Add</button>
+          </div>
+          <div class="rules-list" id="rulesList"></div>
+        </div>
+      </div>
+
+      <div class="history-section">
+        <div class="history-header" id="historyToggle">
+          <div class="history-title">
+            <span>📜</span>
+            <span>Session History</span>
+            <span id="historyCount" style="font-size: 0.7rem; color: var(--text-dim);">(0)</span>
+          </div>
+          <span class="custom-rules-toggle collapsed" id="historyIcon">▼</span>
+        </div>
+        <div class="history-content" id="historyContent">
+          <div class="history-list" id="historyList"></div>
+          <button class="btn btn-small btn-danger" id="clearHistory" style="margin-top: 0.5rem; width: 100%; display:none;">Clear All History</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="fuzzBtn">⚡ Fracture Payload</button>
+      <div class="error" id="error"></div>
+    </div>
+
+    <div class="panel">
+      <div class="results-header">
+        <div style="display: flex; align-items: center;">
+          <div class="panel-title">Mutations</div>
+          <span class="batch-indicator" id="batchIndicator" style="display:none;"></span>
+        </div>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="btn btn-small" id="copyAll" style="display:none;">Copy All</button>
+          <button class="btn btn-small btn-success" id="exportPostman" style="display:none;">📦 Export to Postman</button>
+        </div>
+      </div>
+      <div id="results">
+        <div class="empty-state">
+          <div class="empty-state-icon">◆</div>
+          <div>Paste a valid JSON payload and click <strong>Fracture Payload</strong></div>
+          <div style="margin-top: 0.5rem; font-size: 0.85rem;">10+ mutation types will be generated locally</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-content">
+      <div class="footer-message">
+        Found this tool useful? <strong>Let's connect!</strong><br>
+        I build privacy-first developer tools and love hearing feedback.
+      </div>
+      
+      <div class="footer-links">
+        <a href="https://mail.google.com/mail/u/1/#inbox" class="footer-link">
+          <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+          Email Me
+        </a>
+        <a href="https://github.com/yourusername" target="_blank" class="footer-link">
+          <svg viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          GitHub
+        </a>
+      </div>
+      
+      <div class="footer-divider"></div>
+      
+      <div class="footer-bottom">
+        Built with ❤️ for developers who test the unhappy path · <a href="#" onclick="downloadSelf(); return false;">Download this tool</a>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<div class="copied" id="copied">✓ Copied to clipboard</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const deepClone = obj => {
+  try { return structuredClone(obj); }
+  catch (e) { return JSON.parse(JSON.stringify(obj)); }
+};
+
+function showError(msg) {
+  const el = $('error');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 5000);
+}
+
+function flashCopied() {
+  const el = $('copied');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1500);
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    flashCopied();
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    flashCopied();
+  }
+}
+
+function downloadFile(filename, content) {
+  const blob = new Blob([content], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadSelf() {
+  const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+  downloadFile('payload-prism.html', html);
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// --- CUSTOM RULES ---
+let customRules = [];
+
+function renderRules() {
+  const list = $('rulesList');
+  list.innerHTML = '';
+  customRules.forEach((rule, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'rule-chip';
+    chip.innerHTML = `
+      <span>${rule.key} = ${JSON.stringify(rule.value)}</span>
+      <span class="rule-chip-remove" data-index="${i}">✕</span>
+    `;
+    list.appendChild(chip);
+  });
+  list.querySelectorAll('.rule-chip-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      customRules.splice(parseInt(btn.dataset.index), 1);
+      renderRules();
+    });
+  });
+}
+
+$('customRulesToggle').addEventListener('click', () => {
+  $('customRulesContent').classList.toggle('show');
+  $('toggleIcon').classList.toggle('collapsed');
+});
+
+$('addRule').addEventListener('click', () => {
+  const key = $('ruleKey').value.trim();
+  const value = $('ruleValue').value.trim();
+  if (!key || !value) { showError('Please fill in both key and value.'); return; }
+  
+  let parsedValue;
+  try { parsedValue = JSON.parse(value); }
+  catch { parsedValue = value; }
+  
+  customRules.push({ key, value: parsedValue });
+  $('ruleKey').value = '';
+  $('ruleValue').value = '';
+  renderRules();
+});
+
+// --- HISTORY ---
+const HISTORY_KEY = 'payloadPrism_history';
+const MAX_HISTORY = 10;
+
+function loadHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  } catch { return []; }
+}
+
+function saveHistory(history) {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)));
+  } catch (e) {
+    console.warn('Could not save history:', e);
+  }
+}
+
+function addToHistory(input, rules, payloadCount) {
+  const history = loadHistory();
+  history.unshift({
+    timestamp: Date.now(),
+    input: input,
+    rules: rules,
+    payloadCount: payloadCount
+  });
+  saveHistory(history);
+  renderHistory();
+}
+
+function renderHistory() {
+  const history = loadHistory();
+  const list = $('historyList');
+  const clearBtn = $('clearHistory');
+  $('historyCount').textContent = `(${history.length})`;
+  
+  if (history.length === 0) {
+    list.innerHTML = '<div class="history-empty">No sessions saved yet.</div>';
+    clearBtn.style.display = 'none';
+    return;
+  }
+  
+  clearBtn.style.display = 'block';
+  list.innerHTML = '';
+  history.forEach((session, i) => {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    const time = new Date(session.timestamp).toLocaleString();
+    const preview = session.input.substring(0, 50).replace(/\s+/g, ' ');
+    const plural = session.payloadCount > 1 ? `${session.payloadCount} payloads` : '1 payload';
+    
+    item.innerHTML = `
+      <div class="history-item-info">
+        <div class="history-item-preview">${escapeHtml(preview)}...</div>
+        <div class="history-item-time">${time} · ${plural}</div>
+      </div>
+      <div class="history-item-actions">
+        <button class="btn btn-small" data-restore="${i}">Restore</button>
+      </div>
+    `;
+    list.appendChild(item);
+  });
+  
+  list.querySelectorAll('[data-restore]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.restore);
+      const session = history[idx];
+      $('input').value = session.input;
+      customRules = session.rules || [];
+      renderRules();
+      flashCopied();
+      $('copied').textContent = '✓ Session restored';
+      setTimeout(() => { $('copied').textContent = '✓ Copied to clipboard'; }, 1500);
+    });
+  });
+}
+
+$('historyToggle').addEventListener('click', () => {
+  $('historyContent').classList.toggle('show');
+  $('historyIcon').classList.toggle('collapsed');
+});
+
+$('clearHistory').addEventListener('click', () => {
+  if (confirm('Clear all session history?')) {
+    localStorage.removeItem(HISTORY_KEY);
+    renderHistory();
+  }
+});
+
+// --- FILE UPLOAD ---
+$('fileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const content = event.target.result;
+      const parsed = JSON.parse(content);
+      $('input').value = JSON.stringify(parsed, null, 2);
+      $('clearInput').style.display = 'inline-block';
+      flashCopied();
+      $('copied').textContent = '✓ File loaded';
+      setTimeout(() => { $('copied').textContent = '✓ Copied to clipboard'; }, 1500);
+    } catch (err) {
+      showError('Invalid JSON file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+$('clearInput').addEventListener('click', () => {
+  $('input').value = '';
+  $('clearInput').style.display = 'none';
+});
+
+// --- MUTATION ENGINES ---
+const MUTATIONS = [
+  {
+    name: 'Null Bomb', tag: 'null',
+    desc: 'All leaf values → null. Catches NullPointerException.',
+    fn: obj => {
+      const c = deepClone(obj);
+      (function w(n) {
+        if (Array.isArray(n)) n.forEach((v, i) => v && typeof v === 'object' ? w(v) : n[i] = null);
+        else if (n && typeof n === 'object') for (const k in n) n[k] && typeof n[k] === 'object' ? w(n[k]) : n[k] = null;
+      })(c);
+      return c;
+    }
+  },
+  {
+    name: 'Empty Void', tag: 'empty',
+    desc: 'Strings → "", numbers → 0, arrays → [].',
+    fn: obj => {
+      const c = deepClone(obj);
+      (function w(n) {
+        if (Array.isArray(n)) n.length = 0;
+        else if (n && typeof n === 'object') for (const k in n) {
+          const v = n[k];
+          if (typeof v === 'string') n[k] = '';
+          else if (typeof v === 'number') n[k] = 0;
+          else if (typeof v === 'boolean') n[k] = false;
+          else if (Array.isArray(v)) n[k] = [];
+          else if (v && typeof v === 'object') n[k] = {};
+        }
+      })(c);
+      return c;
+    }
+  },
+  {
+    name: 'Type Chaos', tag: 'type',
+    desc: 'Swaps types: string ↔ number, boolean ↔ string.',
+    fn: obj => {
+      const c = deepClone(obj);
+      const swap = v => typeof v === 'string' ? 12345 : typeof v === 'number' ? 'not_a_number' : typeof v === 'boolean' ? 'true' : v;
+      (function w(n) {
+        if (Array.isArray(n)) n.forEach((v, i) => typeof v !== 'object' || !v ? n[i] = swap(v) : w(v));
+        else if (n && typeof n === 'object') for (const k in n) typeof n[k] !== 'object' || !n[k] ? n[k] = swap(n[k]) : w(n[k]);
+      })(c);
+      return c;
+    }
+  },
+  {
+    name: 'Missing Keys', tag: 'missing',
+    desc: 'Randomly deletes ~50% of keys at each level.',
+    fn: obj => {
+      const c = deepClone(obj);
+      (function w(n) {
+        if (n && typeof n === 'object' && !Array.isArray(n)) {
+          Object.keys(n).forEach(k => {
+            if (Math.random() < 0.5) delete n[k];
+            else if (n[k] && typeof n[k] === 'object') w(n[k]);
+          });
+        }
+      })(c);
+      return c;
+    }
+  },
+  {
+    name: 'Memory Hog', tag: 'memory',
+    desc: 'Strings replaced with 50,000-char payloads. Tests DoS resilience.',
+    fn: obj => {
+      const c = deepClone(obj);
+      const huge = 'A'.repeat(50000);
+      (function w(n) {
+        if (Array.isArray(n)) n.forEach((v, i) => typeof v === 'string' ? n[i] = huge : v && typeof v === 'object' && w(v));
+        else if (n && typeof n === 'object') for (const k in n) typeof n[k] === 'string' ? n[k] = huge : n[k] && typeof n[k] === 'object' && w(n[k]);
+      })(c);
+      return c;
+    }
+  },
+  {
+    name: 'Injection (Safe)', tag: 'inject',
+    desc: 'Simulated attack payloads (SQL, XSS, path traversal).',
+    fn: obj => {
+      const c = deepClone(obj);
+      const payloads = ["[SQL_INJECTION_TEST]", "[XSS_TEST_TAG]", "[PATH_TRAVERSAL]", "[TEMPLATE_INJECTION]", "[CMD_INJECTION]"];
+      let idx = 0;
+      (function w(n) {
+        if (Array.isArray(n)) n.forEach((v, i) => typeof v === 'string' ? n[i] = payloads[idx++ % 5] : v && typeof v === 'object' && w(v));
+        else if (n && typeof n === 'object') for (const k in n) typeof n[k] === 'string' ? n[k] = payloads[idx++ % 5] : n[k] && typeof n[k] === 'object' && w(n[k]);
+      })(c);
+      return c;
+    }
+  },
+  {
+    name: 'Boolean Flip', tag: 'bool',
+    desc: 'All booleans inverted. Tests negation logic.',
+    fn: obj => {
+      const c = deepClone(obj);
+      (function w(n) {
+        if (Array.isArray(n)) n.forEach((v, i) => typeof v === 'boolean' ? n[i] = !v : v && typeof v === 'object' && w(v));
+        else if (n && typeof n === 'object') for (const k in n) typeof n[k] === 'boolean' ? n[k] = !n[k] : n[k] && typeof n[k] === 'object' && w(n[k]);
+      })(c);
+      return c;
+    }
+  },
+  {
+    name: 'Array Chaos', tag: 'array',
+    desc: 'Arrays become 100-element duplicates or nested.',
+    fn: obj => {
+      const c = deepClone(obj);
+      (function w(n) {
+        if (Array.isArray(n)) {
+          if (n.length > 0) {
+            const first = n[0];
+            n.length = 0;
+            for (let i = 0; i < 100; i++) n.push(deepClone(first));
+          }
+        } else if (n && typeof n === 'object') for (const k in n) {
+          if (Array.isArray(n[k])) n[k] = [n[k]];
+          else if (n[k] && typeof n[k] === 'object') w(n[k]);
+        }
+      })(c);
+      return c;
+    }
+  },
+  {
+    name: 'Number Extremes', tag: 'number',
+    desc: 'NaN, Infinity, MAX_INT, tiny decimals.',
+    fn: obj => {
+      const c = deepClone(obj);
+      const ext = [NaN, Infinity, -Infinity, Number.MAX_SAFE_INTEGER + 1, 0.0000000001, -999999999];
+      let idx = 0;
+      (function w(n) {
+        if (Array.isArray(n)) n.forEach((v, i) => typeof v === 'number' ? n[i] = ext[idx++ % 6] : v && typeof v === 'object' && w(v));
+        else if (n && typeof n === 'object') for (const k in n) typeof n[k] === 'number' ? n[k] = ext[idx++ % 6] : n[k] && typeof n[k] === 'object' && w(n[k]);
+      })(c);
+      return c;
+    }
+  },
+  {
+    name: 'Unicode Chaos', tag: 'unicode',
+    desc: 'RTL, zero-width, emojis, CJK, control chars.',
+    fn: obj => {
+      const c = deepClone(obj);
+      const weird = [
+        "",
+        String.fromCharCode(8238) + "rtl" + String.fromCharCode(8236),
+        "🎉🚀💀",
+        "\uFDFD",
+        String.fromCharCode(0, 1, 2),
+        "日本語テスト",
+        "   ",
+        "null", "undefined", "NaN"
+      ];
+      let idx = 0;
+      (function w(n) {
+        if (Array.isArray(n)) n.forEach((v, i) => typeof v === 'string' ? n[i] = weird[idx++ % weird.length] : v && typeof v === 'object' && w(v));
+        else if (n && typeof n === 'object') for (const k in n) typeof n[k] === 'string' ? n[k] = weird[idx++ % weird.length] : n[k] && typeof n[k] === 'object' && w(n[k]);
+      })(c);
+      return c;
+    }
+  }
+];
+
+function mutateCustomRules(obj, rules) {
+  const c = deepClone(obj);
+  (function w(n) {
+    if (Array.isArray(n)) {
+      n.forEach((v, i) => { if (v && typeof v === 'object') w(v); });
+    } else if (n && typeof n === 'object') {
+      for (const k in n) {
+        const matchingRule = rules.find(r => r.key === k);
+        if (matchingRule) n[k] = matchingRule.value;
+        else if (n[k] && typeof n[k] === 'object') w(n[k]);
+      }
+    }
+  })(c);
+  return c;
+}
+
+function generateMutationsForPayload(parsed) {
+  const results = MUTATIONS.map(m => ({
+    name: m.name, tag: m.tag, desc: m.desc, value: m.fn(parsed), isCustom: false
+  }));
+  
+  if (customRules.length > 0) {
+    const ruleDesc = customRules.map(r => `${r.key} = ${JSON.stringify(r.value)}`).join(', ');
+    results.push({
+      name: 'Custom Override',
+      tag: 'custom',
+      desc: `Applied rules: ${ruleDesc}`,
+      value: mutateCustomRules(parsed, customRules),
+      isCustom: true
+    });
+  }
+  
+  return results;
+}
+
+let currentMutations = [];
+let currentPayloads = [];
+const DISPLAY_LIMIT = 1500;
+
+function renderResults(allPayloadMutations, isBatch) {
+  currentMutations = [];
+  currentPayloads = [];
+  const container = $('results');
+  container.innerHTML = '';
+  $('copyAll').style.display = 'inline-block';
+  $('exportPostman').style.display = 'inline-block';
+  
+  const batchIndicator = $('batchIndicator');
+  if (isBatch) {
+    batchIndicator.textContent = `${allPayloadMutations.length} payloads`;
+    batchIndicator.style.display = 'inline-block';
+  } else {
+    batchIndicator.style.display = 'none';
+  }
+  
+  allPayloadMutations.forEach((payloadData, payloadIdx) => {
+    currentPayloads.push(payloadData.original);
+    
+    if (isBatch) {
+      const group = document.createElement('div');
+      group.className = 'payload-group';
+      group.innerHTML = `<div class="payload-group-header">📦 Payload #${payloadIdx + 1}</div>`;
+      container.appendChild(group);
+      
+      payloadData.mutations.forEach(m => {
+        currentMutations.push(m);
+        const card = createMutationCard(m, currentMutations.length - 1);
+        group.appendChild(card);
+      });
+    } else {
+      payloadData.mutations.forEach(m => {
+        currentMutations.push(m);
+        const card = createMutationCard(m, currentMutations.length - 1);
+        container.appendChild(card);
+      });
+    }
+  });
+  
+  attachCardListeners(container);
+}
+
+function createMutationCard(m, idx) {
+  const div = document.createElement('div');
+  div.className = 'mutation';
+  
+  let fullJson;
+  try { fullJson = JSON.stringify(m.value, null, 2); }
+  catch (e) { fullJson = '// Could not serialize'; }
+  
+  const isTruncated = fullJson.length > DISPLAY_LIMIT;
+  const displayJson = isTruncated
+    ? fullJson.substring(0, DISPLAY_LIMIT) + '\n\n... [truncated ' + (fullJson.length - DISPLAY_LIMIT).toLocaleString() + ' chars]'
+    : fullJson;
+  
+  div.innerHTML = `
+    <div class="mutation-header">
+      <div class="mutation-info">
+        <div class="mutation-name">
+          ${m.name}
+          <span class="mutation-tag ${m.isCustom ? 'mutation-tag-custom' : ''}">${m.tag}</span>
+        </div>
+        <div class="mutation-desc">${m.desc}</div>
+      </div>
+      <div class="mutation-actions">
+        <button class="btn btn-small" data-copy="${idx}">Copy</button>
+      </div>
+    </div>
+    <div class="code-wrapper">
+      <pre>${escapeHtml(displayJson)}</pre>
+    </div>
+    ${isTruncated ? `<div class="truncated-notice"><span>⚠ Display truncated. Copy button has the full payload.</span><button data-expand="${idx}">Expand</button></div>` : ''}
+  `;
+  return div;
+}
+
+function attachCardListeners(container) {
+  container.querySelectorAll('[data-copy]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.copy);
+      try { copyText(JSON.stringify(currentMutations[idx].value, null, 2)); }
+      catch (e) { copyText('// Could not serialize'); }
+    });
+  });
+  
+  container.querySelectorAll('[data-expand]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.expand);
+      const card = btn.closest('.mutation');
+      const pre = card.querySelector('pre');
+      const notice = card.querySelector('.truncated-notice');
+      try {
+        pre.textContent = JSON.stringify(currentMutations[idx].value, null, 2);
+        notice.remove();
+      } catch (e) {
+        pre.textContent = '// Could not serialize';
+      }
+    });
+  });
+}
+
+$('fuzzBtn').addEventListener('click', () => {
+  const input = $('input').value.trim();
+  if (!input) { showError('Please paste a JSON payload first.'); return; }
+  
+  let parsed;
+  try { parsed = JSON.parse(input); }
+  catch (e) { showError('Invalid JSON: ' + e.message); return; }
+  
+  let payloads = [];
+  let isBatch = false;
+  
+  if (Array.isArray(parsed)) {
+    payloads = parsed.filter(item => item !== null && typeof item === 'object');
+    if (payloads.length === 0) {
+      showError('Array is empty or contains no valid objects.');
+      return;
+    }
+    isBatch = true;
+  } else if (parsed !== null && typeof parsed === 'object') {
+    payloads = [parsed];
+  } else {
+    showError('Payload must be a JSON object or array.');
+    return;
+  }
+  
+  const allPayloadMutations = payloads.map(p => ({
+    original: p,
+    mutations: generateMutationsForPayload(p)
+  }));
+  
+  renderResults(allPayloadMutations, isBatch);
+  addToHistory(input, customRules, payloads.length);
+});
+
+$('loadSample').addEventListener('click', () => {
+  $('input').value = JSON.stringify({
+    username: "johndoe",
+    email: "john@example.com",
+    age: 25,
+    isAdmin: false,
+    roles: ["user", "editor"],
+    profile: { bio: "Hello world", followers: 42 }
+  }, null, 2);
+  $('clearInput').style.display = 'inline-block';
+});
+
+$('copyAll').addEventListener('click', () => {
+  const all = currentMutations.map(m => {
+    let str;
+    try { str = JSON.stringify(m.value, null, 2); }
+    catch (e) { str = '// Could not serialize'; }
+    return `// === ${m.name} ===\n${str}`;
+  }).join('\n\n');
+  copyText(all);
+});
+
+$('exportPostman').addEventListener('click', () => {
+  const postmanCollection = {
+    info: {
+      name: "Payload Prism Mutations",
+      description: `Edge-case mutations generated by Payload Prism (${currentMutations.length} requests)`,
+      schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    item: currentMutations.map((m, i) => {
+      let body;
+      try { body = JSON.stringify(m.value, null, 2); }
+      catch (e) { body = '// Could not serialize'; }
+      
+      return {
+        name: `${i + 1}. ${m.name}`,
+        request: {
+          method: "POST",
+          header: [{ key: "Content-Type", value: "application/json" }],
+          body: { mode: "raw", raw: body },
+          url: { raw: "{{baseUrl}}", host: ["{{baseUrl}}"] },
+          description: m.desc
+        }
+      };
+    })
+  };
+  
+  downloadFile('payload-prism-postman-collection.json', JSON.stringify(postmanCollection, null, 2));
+});
+
+$('input').addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    $('fuzzBtn').click();
+  }
+});
+
+renderHistory();
+</script>
+</body>
+</html>
