@@ -10,6 +10,29 @@
 <meta property="og:title" content="Payload Prism — Local JSON Fuzzer">
 <meta property="og:description" content="Split one JSON payload into a spectrum of edge cases. 100% local, zero data leaves your browser.">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://payload-prism.vercel.app/">
+<meta property="og:site_name" content="Payload Prism">
+<meta property="og:image" content="https://payload-prism.vercel.app/og.png">
+<link rel="canonical" href="https://payload-prism.vercel.app/" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Payload Prism",
+  "url": "https://payload-prism.vercel.app/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any (web browser)",
+  "description": "A 100% local, offline JSON fuzzer. Mutate API payloads with nulls, type chaos, and injection tests without sending sensitive data to any server.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "featureList": [
+    "JSON fuzzing and mutation",
+    "Null, type and boundary edge cases",
+    "Injection test payloads",
+    "Postman export",
+    "100% client-side, works offline"
+  ]
+}
+</script>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>◆</text></svg>">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -31,7 +54,9 @@
     background: linear-gradient(90deg, var(--accent-1), var(--accent-2), var(--accent-3));
     -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
   }
-  .tagline { color: var(--text-dim); margin-top: 0.5rem; font-size: 0.95rem; }
+  .tagline { color: var(--text-dim); margin-top: 0.5rem; font-size: 0.95rem; font-weight: 400; }
+  /* h1.tagline keeps the visual tagline style but gives crawlers a real heading. */
+  h1.tagline { display: block; }
   .privacy-badge {
     display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 1rem;
     padding: 0.4rem 0.9rem; background: rgba(16, 185, 129, 0.1);
@@ -293,7 +318,7 @@
 <div class="container">
   <header>
     <div class="logo">◆ Payload Prism</div>
-    <div class="tagline">Split one JSON payload into a spectrum of edge cases.</div>
+    <h1 class="tagline">Local JSON Fuzzer &amp; Edge-Case Generator &mdash; split one payload into a spectrum of edge cases.</h1>
     <div class="privacy-badge">
       <span>🔒</span>
       <span>100% local · No data leaves your browser · Works offline</span>
